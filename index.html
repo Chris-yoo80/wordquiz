@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>단어시험</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#27418F">
+<style>
+  :root{
+    --bg:#F3F5FA; --card:#FFFFFF; --ink:#1F2533; --ink-soft:#5C6373;
+    --prime:#27418F; --prime-deep:#1D3270; --accent:#FFB300;
+    --ok:#2E7D51; --bad:#C0453C; --line:#DDE2EC;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+    background:var(--bg);color:var(--ink);overflow:hidden;}
+  button{font-family:inherit;border:none;background:none;cursor:pointer;color:inherit;}
+  input,textarea{font-family:inherit;}
+
+  #topbar{height:56px;display:flex;align-items:center;gap:10px;padding:0 14px;
+    background:var(--prime);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);position:relative;z-index:10;}
+  #topbar .brand{font-weight:800;font-size:17px;display:flex;align-items:center;gap:8px;}
+  #topbar .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);}
+  #topbar .spacer{flex:1;}
+  .bar-btn{height:36px;padding:0 13px;border-radius:10px;font-size:13.5px;font-weight:700;
+    background:rgba(255,255,255,.15);color:#fff;}
+  .bar-btn:active{background:rgba(255,255,255,.32);}
+  #backBtn{display:none;font-size:20px;padding:0 8px;}
+
+  #storageBanner{display:none;background:#7A4A1F;color:#FFEBC9;font-size:13px;padding:8px 14px;line-height:1.5;}
+
+  #app{height:calc(100% - 56px);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .view{display:none;padding:16px;max-width:640px;margin:0 auto;}
+  .view.on{display:block;}
+
+  /* ── 홈: 단어장 목록 ── */
+  .book{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:16px 16px 14px 20px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+  .book .stripe{position:absolute;left:0;top:12px;bottom:12px;width:6px;border-radius:0 4px 4px 0;background:var(--prime);}
+  .book h3{font-size:16px;font-weight:800;}
+  .book .meta{font-size:12.5px;color:var(--ink-soft);margin-top:4px;}
+  .book .del{position:absolute;right:10px;top:10px;width:30px;height:30px;border-radius:8px;
+    color:#AEB4C0;font-size:16px;}
+  .book .del:active{background:#F6E4E2;color:var(--bad);}
+  #emptyHome{text-align:center;color:var(--ink-soft);padding:60px 20px;line-height:1.9;font-size:14.5px;}
+  .big-btn{width:100%;height:54px;border-radius:14px;font-size:16px;font-weight:800;margin-top:6px;}
+  .big-btn.prime{background:var(--prime);color:#fff;box-shadow:0 4px 14px rgba(39,65,143,.3);}
+  .big-btn.prime:active{background:var(--prime-deep);}
+  .big-btn.ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink);}
+  .row2{display:flex;gap:10px;}
+  .row2 .big-btn{flex:1;}
+
+  /* ── 단어 편집 ── */
+  #bookTitle{width:100%;height:48px;font-size:18px;font-weight:800;border:none;background:transparent;
+    border-bottom:2px solid var(--line);padding:0 4px;margin-bottom:12px;color:var(--ink);}
+  #bookTitle:focus{outline:none;border-bottom-color:var(--prime);}
+  .word-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+  .word-row input{flex:1;height:44px;border:1.5px solid var(--line);border-radius:10px;
+    padding:0 12px;font-size:15px;background:#fff;min-width:0;}
+  .word-row input:focus{outline:none;border-color:var(--prime);}
+  .word-row .rm{width:36px;height:36px;border-radius:9px;color:#AEB4C0;font-size:16px;flex:none;}
+  .word-row .rm:active{background:#F6E4E2;color:var(--bad);}
+  .hintbox{background:#EEF2FB;border:1px solid #D5DEF2;border-radius:12px;padding:12px 14px;
+    font-size:13px;color:#3A4664;line-height:1.6;margin-bottom:12px;}
+
+  /* ── 시험 설정 ── */
+  .sec-label{font-size:13.5px;font-weight:800;color:var(--ink-soft);margin:18px 0 8px;}
+  .choice-grid{display:flex;gap:8px;flex-wrap:wrap;}
+  .chip{height:46px;padding:0 16px;border-radius:12px;border:1.5px solid var(--line);
+    background:#fff;font-size:14.5px;font-weight:700;color:var(--ink-soft);}
+  .chip.on{background:var(--prime);border-color:var(--prime);color:#fff;}
+
+  /* ── 시험 화면 ── */
+  #quizHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  #quizProg{font-size:14px;font-weight:800;color:var(--ink-soft);}
+  #progBar{height:6px;background:#E2E7F1;border-radius:3px;overflow:hidden;margin-bottom:20px;}
+  #progFill{height:100%;background:var(--accent);width:0%;transition:width .25s;}
+  .q-card{background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:34px 20px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.06);margin-bottom:16px;}
+  #qWord{font-size:30px;font-weight:800;word-break:break-all;}
+  #qSub{font-size:13px;color:var(--ink-soft);margin-top:8px;}
+  .opt{width:100%;min-height:52px;border-radius:13px;border:1.5px solid var(--line);background:#fff;
+    font-size:16px;font-weight:600;margin-bottom:9px;padding:12px 14px;text-align:left;}
+  .opt:active{background:#F0F3FA;}
+  .opt.right{background:#E3F2E9;border-color:var(--ok);color:var(--ok);font-weight:800;}
+  .opt.wrong{background:#FBE7E5;border-color:var(--bad);color:var(--bad);}
+  #typeInput{width:100%;height:54px;border:2px solid var(--line);border-radius:13px;
+    font-size:18px;padding:0 14px;text-align:center;background:#fff;}
+  #typeInput:focus{outline:none;border-color:var(--prime);}
+  #typeInput.right{border-color:var(--ok);background:#E3F2E9;}
+  #typeInput.wrong{border-color:var(--bad);background:#FBE7E5;}
+  #typeAnswer{text-align:center;font-size:15px;margin-top:10px;min-height:22px;font-weight:700;}
+  .flip-hint{font-size:13px;color:var(--ink-soft);text-align:center;margin-bottom:12px;}
+  .card-acts{display:flex;gap:10px;margin-top:4px;}
+  .card-acts .big-btn{flex:1;margin-top:0;}
+  .big-btn.ok{background:#E3F2E9;color:var(--ok);border:1.5px solid var(--ok);}
+  .big-btn.no{background:#FBE7E5;color:var(--bad);border:1.5px solid var(--bad);}
+
+  /* ── 결과 ── */
+  #resultScore{text-align:center;padding:26px 0 10px;}
+  #resultScore .pct{font-size:52px;font-weight:800;color:var(--prime);}
+  #resultScore .sub{font-size:14px;color:var(--ink-soft);margin-top:4px;}
+  .wrong-item{background:#fff;border:1px solid var(--line);border-left:4px solid var(--bad);
+    border-radius:10px;padding:11px 14px;margin-bottom:8px;font-size:15px;}
+  .wrong-item b{font-weight:800;}
+  .wrong-item span{color:var(--ink-soft);}
+
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(80px);
+    background:var(--ink);color:#fff;padding:10px 18px;border-radius:12px;font-size:14px;
+    opacity:0;transition:all .25s;z-index:99;pointer-events:none;white-space:nowrap;}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <button id="backBtn">‹</button>
+  <div class="brand"><span class="dot"></span>단어시험</div>
+  <div class="spacer"></div>
+  <button class="bar-btn" id="backupBtn">백업</button>
+  <button class="bar-btn" id="restoreBtn">복원</button>
+  <input type="file" id="restoreFile" accept=".json" style="display:none;">
+</div>
+<div id="storageBanner">⚠️ 미리보기 모드: 저장이 유지되지 않아요. 파일을 기기에 받아 브라우저로 열면 자동 저장됩니다.</div>
+
+<div id="app">
+
+  <!-- 홈 -->
+  <div class="view on" id="vHome">
+    <div id="bookList"></div>
+    <div id="emptyHome" style="display:none;">아직 단어장이 없어요.<br>단어책을 찍거나 직접 입력해 시작!</div>
+    <button class="big-btn prime" id="btnOcr">📷 단어책 사진으로 만들기</button>
+    <button class="big-btn ghost" id="btnManual">⌨ 직접 입력으로 만들기</button>
+    <input type="file" id="ocrFile" accept="image/*" style="display:none;">
+  </div>
+
+  <!-- 단어장 편집 -->
+  <div class="view" id="vEdit">
+    <input id="bookTitle" placeholder="단어장 이름 (예: 중2 영단어 Day3)">
+    <div class="hintbox" id="editHint" style="display:none;"></div>
+    <div id="wordRows"></div>
+    <button class="big-btn ghost" id="addRowBtn">＋ 단어 추가</button>
+    <button class="big-btn prime" id="saveBookBtn">저장하고 시험 준비 →</button>
+  </div>
+
+  <!-- 시험 설정 -->
+  <div class="view" id="vSetup">
+    <div class="q-card" style="padding:20px;">
+      <div id="setupTitle" style="font-size:18px;font-weight:800;"></div>
+      <div id="setupCount" style="font-size:13px;color:var(--ink-soft);margin-top:5px;"></div>
+    </div>
+    <div class="sec-label">시험 방식</div>
+    <div class="choice-grid" id="modeChips">
+      <button class="chip on" data-mode="card">🃏 카드 암기</button>
+      <button class="chip" data-mode="choice">☑ 객관식</button>
+      <button class="chip" data-mode="type">✎ 철자 쓰기</button>
+    </div>
+    <div class="sec-label">방향</div>
+    <div class="choice-grid" id="dirChips">
+      <button class="chip on" data-dir="w2m">단어 → 뜻</button>
+      <button class="chip" data-dir="m2w">뜻 → 단어</button>
+    </div>
+    <div class="sec-label">문제 수</div>
+    <div class="choice-grid" id="cntChips">
+      <button class="chip" data-cnt="10">10개</button>
+      <button class="chip" data-cnt="20">20개</button>
+      <button class="chip on" data-cnt="0">전체</button>
+    </div>
+    <button class="big-btn prime" id="startQuizBtn" style="margin-top:24px;">🔀 섞어서 시작!</button>
+    <button class="big-btn ghost" id="editBookBtn">단어 수정하기</button>
+  </div>
+
+  <!-- 시험 -->
+  <div class="view" id="vQuiz">
+    <div id="quizHead"><div id="quizProg"></div><div id="quizScore" style="font-size:14px;font-weight:800;color:var(--ok);"></div></div>
+    <div id="progBar"><div id="progFill"></div></div>
+    <div class="q-card" id="qCard"><div id="qWord"></div><div id="qSub"></div></div>
+    <div id="quizBody"></div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="view" id="vResult">
+    <div id="resultScore"><div class="pct"></div><div class="sub"></div></div>
+    <div class="sec-label" id="wrongLabel">틀린 단어</div>
+    <div id="wrongList"></div>
+    <div class="row2" style="margin-top:14px;">
+      <button class="big-btn prime" id="retryWrongBtn">틀린 것만 다시</button>
+      <button class="big-btn ghost" id="toHomeBtn">홈으로</button>
+    </div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+var KEY="wordquiz.v1";
+var memStore=null, persistent=true;
+function loadAll(){ try{var r=localStorage.getItem(KEY);return r?JSON.parse(r):null;}catch(e){persistent=false;return memStore;} }
+function saveAll(d){
+  memStore=d;
+  try{ localStorage.setItem(KEY,JSON.stringify(d)); persistent=true; }
+  catch(e){ persistent=false; }
+  document.getElementById("storageBanner").style.display=persistent?"none":"block";
+}
+try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); }
+catch(e){ persistent=false; document.getElementById("storageBanner").style.display="block"; }
+
+var state=loadAll()||{books:[]};
+var $=function(id){return document.getElementById(id);};
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function toast(m){var t=$("toast");t.textContent=m;t.classList.add("show");
+  clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove("show");},1800);}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+/* ── 화면 전환 ── */
+var curView="vHome";
+function show(v){
+  document.querySelectorAll(".view").forEach(function(x){x.classList.remove("on");});
+  $(v).classList.add("on"); curView=v;
+  $("backBtn").style.display=(v==="vHome")?"none":"block";
+  $("app").scrollTop=0;
+}
+$("backBtn").addEventListener("click",function(){
+  if(curView==="vQuiz"&&!confirm("시험을 그만둘까요?"))return;
+  if(curView==="vEdit"||curView==="vSetup") show("vHome"), renderHome();
+  else if(curView==="vQuiz") show("vSetup");
+  else show("vHome"), renderHome();
+});
+
+/* ── 홈 ── */
+function getBook(id){for(var i=0;i<state.books.length;i++)if(state.books[i].id===id)return state.books[i];return null;}
+function renderHome(){
+  var wrap=$("bookList"); wrap.innerHTML="";
+  $("emptyHome").style.display=state.books.length?"none":"block";
+  state.books.slice().sort(function(a,b){return b.updated-a.updated;}).forEach(function(b){
+    var el=document.createElement("div"); el.className="book";
+    el.innerHTML='<span class="stripe"></span><h3></h3><div class="meta"></div><button class="del">✕</button>';
+    el.querySelector("h3").textContent=b.title||"이름 없는 단어장";
+    var best=(b.best!=null)?" · 최고 "+b.best+"%":"";
+    el.querySelector(".meta").textContent="단어 "+b.words.length+"개"+best;
+    el.addEventListener("click",function(ev){
+      if(ev.target.classList.contains("del"))return;
+      openSetup(b.id);
+    });
+    el.querySelector(".del").addEventListener("click",function(){
+      if(!confirm('"'+(b.title||"이름 없는 단어장")+'" 삭제할까요?'))return;
+      state.books=state.books.filter(function(x){return x.id!==b.id;});
+      saveAll(state); renderHome(); toast("삭제됨");
+    });
+    wrap.appendChild(el);
+  });
+}
+
+/* ── 단어장 편집 ── */
+var editingId=null;
+function openEdit(id,hint,prefill){
+  editingId=id;
+  var b=id?getBook(id):null;
+  $("bookTitle").value=b?b.title:"";
+  var hintBox=$("editHint");
+  if(hint){hintBox.style.display="block";hintBox.textContent=hint;}
+  else hintBox.style.display="none";
+  $("wordRows").innerHTML="";
+  var words=b?b.words:(prefill||[]);
+  if(!words.length) words=[{w:"",m:""},{w:"",m:""},{w:"",m:""}];
+  words.forEach(function(p){addRow(p.w,p.m);});
+  show("vEdit");
+}
+function addRow(w,m){
+  var row=document.createElement("div"); row.className="word-row";
+  row.innerHTML='<input class="in-w" placeholder="단어"><input class="in-m" placeholder="뜻"><button class="rm">✕</button>';
+  row.querySelector(".in-w").value=w||"";
+  row.querySelector(".in-m").value=m||"";
+  row.querySelector(".rm").addEventListener("click",function(){row.remove();});
+  $("wordRows").appendChild(row);
+}
+$("addRowBtn").addEventListener("click",function(){addRow("","");
+  var rows=$("wordRows").children; rows[rows.length-1].querySelector(".in-w").focus();});
+$("saveBookBtn").addEventListener("click",function(){
+  var words=[];
+  document.querySelectorAll(".word-row").forEach(function(r){
+    var w=r.querySelector(".in-w").value.trim(), m=r.querySelector(".in-m").value.trim();
+    if(w&&m) words.push({w:w,m:m});
+  });
+  if(words.length<2){alert("단어를 2개 이상 입력해주세요 (단어와 뜻 모두).");return;}
+  var b;
+  if(editingId){ b=getBook(editingId); b.words=words; b.title=$("bookTitle").value.trim(); b.updated=Date.now(); }
+  else{
+    b={id:uid(),title:$("bookTitle").value.trim(),words:words,best:null,created:Date.now(),updated:Date.now()};
+    state.books.push(b);
+  }
+  saveAll(state); toast("단어 "+words.length+"개 저장");
+  openSetup(b.id);
+});
+$("btnManual").addEventListener("click",function(){openEdit(null);});
+
+/* ── OCR로 만들기 ── */
+var TESS_URL="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.5/tesseract.min.js";
+var tessReady=null;
+function loadTess(){
+  if(window.Tesseract)return Promise.resolve();
+  if(tessReady)return tessReady;
+  tessReady=new Promise(function(res,rej){
+    var sc=document.createElement("script");sc.src=TESS_URL;
+    sc.onload=res;sc.onerror=function(){tessReady=null;rej(new Error("net"));};
+    document.head.appendChild(sc);
+  });
+  return tessReady;
+}
+$("btnOcr").addEventListener("click",function(){$("ocrFile").click();});
+$("ocrFile").addEventListener("change",function(){
+  var f=this.files[0]; this.value=""; if(!f)return;
+  toast("사진에서 단어 인식 중… 처음엔 1분쯤 걸려요");
+  loadTess().then(function(){
+    return window.Tesseract.recognize(f,"kor+eng");
+  }).then(function(out){
+    var text=(out&&out.data&&out.data.text)||"";
+    var pairs=parseWordPairs(text);
+    if(!pairs.length){
+      alert("단어를 못 찾았어요. 밝은 곳에서 페이지를 정면으로 크게 찍어보세요.\n직접 입력 화면으로 이동합니다.");
+      openEdit(null);
+      return;
+    }
+    openEdit(null,"사진에서 "+pairs.length+"개를 읽었어요. 잘못 읽힌 것만 고치고 저장하세요!",pairs);
+  }).catch(function(err){
+    if(err&&err.message==="net")alert("인식 도구를 내려받지 못했어요. 인터넷 연결 후 다시 시도해주세요.");
+    else alert("사진 인식에 실패했어요.");
+  });
+});
+/* 줄 단위로 "영어부분 + 한글부분" 분리 */
+function parseWordPairs(text){
+  var pairs=[];
+  text.split(/\n+/).forEach(function(line){
+    line=line.replace(/^\s*\d+[.)]?\s*/,"").trim();   // 앞 번호 제거
+    if(line.length<3)return;
+    var m=line.match(/^([A-Za-z][A-Za-z\-'’ ]*[A-Za-z])\s*[:\-–~ㅣ|,]?\s+(.*[가-힣].*)$/);
+    if(m){
+      var w=m[1].trim(), mean=m[2].replace(/[|ㅣ]/g,"").trim();
+      if(w.length>=2&&mean.length>=1) pairs.push({w:w,m:mean});
+    }
+  });
+  return pairs;
+}
+
+/* ── 시험 설정 ── */
+var setupId=null, qMode="card", qDir="w2m", qCnt=0;
+function openSetup(id){
+  setupId=id;
+  var b=getBook(id); if(!b)return;
+  $("setupTitle").textContent=b.title||"이름 없는 단어장";
+  $("setupCount").textContent="단어 "+b.words.length+"개"+(b.best!=null?" · 최고 점수 "+b.best+"%":"");
+  show("vSetup");
+}
+function chipGroup(groupId,attr,cb){
+  $(groupId).addEventListener("click",function(ev){
+    var c=ev.target.closest(".chip"); if(!c)return;
+    this.querySelectorAll(".chip").forEach(function(x){x.classList.remove("on");});
+    c.classList.add("on"); cb(c.getAttribute(attr));
+  });
+}
+chipGroup("modeChips","data-mode",function(v){qMode=v;});
+chipGroup("dirChips","data-dir",function(v){qDir=v;});
+chipGroup("cntChips","data-cnt",function(v){qCnt=+v;});
+$("editBookBtn").addEventListener("click",function(){openEdit(setupId);});
+
+/* ── 시험 진행 ── */
+var quiz=[], qi=0, correct=0, wrongs=[], locked=false;
+$("startQuizBtn").addEventListener("click",function(){startQuiz(getBook(setupId).words);});
+function startQuiz(words){
+  var pool=shuffle(words);
+  if(qCnt>0) pool=pool.slice(0,qCnt);
+  quiz=pool; qi=0; correct=0; wrongs=[]; locked=false;
+  show("vQuiz"); renderQ();
+}
+function renderQ(){
+  if(qi>=quiz.length){finish();return;}
+  locked=false;
+  var q=quiz[qi];
+  var front=(qDir==="w2m")?q.w:q.m;
+  var back=(qDir==="w2m")?q.m:q.w;
+  $("quizProg").textContent=(qi+1)+" / "+quiz.length;
+  $("quizScore").textContent=(qMode==="card")?"":"맞춤 "+correct;
+  $("progFill").style.width=(qi/quiz.length*100)+"%";
+  $("qWord").textContent=front;
+  $("qSub").textContent="";
+  var bodyEl=$("quizBody"); bodyEl.innerHTML="";
+
+  if(qMode==="card"){
+    var revealed=false;
+    $("qSub").textContent="카드를 눌러 뜻 확인";
+    var hint=document.createElement("div");hint.className="flip-hint";hint.textContent=" ";
+    bodyEl.appendChild(hint);
+    var acts=document.createElement("div");acts.className="card-acts";
+    acts.innerHTML='<button class="big-btn ok">알아요 ✓</button><button class="big-btn no">몰라요 ✗</button>';
+    bodyEl.appendChild(acts);
+    $("qCard").onclick=function(){
+      revealed=!revealed;
+      $("qWord").textContent=revealed?back:front;
+      $("qSub").textContent=revealed?"(뒷면) 카드를 눌러 앞면":"카드를 눌러 뜻 확인";
+    };
+    acts.children[0].addEventListener("click",function(){correct++;next();});
+    acts.children[1].addEventListener("click",function(){wrongs.push(quiz[qi]);next();});
+  }
+  else if(qMode==="choice"){
+    $("qCard").onclick=null;
+    $("qSub").textContent=(qDir==="w2m")?"알맞은 뜻을 고르세요":"알맞은 단어를 고르세요";
+    var book=getBook(setupId);
+    var distract=shuffle(book.words.filter(function(x){return x!==q;}))
+      .slice(0,3).map(function(x){return (qDir==="w2m")?x.m:x.w;});
+    var opts=shuffle([back].concat(distract));
+    opts.forEach(function(o){
+      var btn=document.createElement("button");btn.className="opt";btn.textContent=o;
+      btn.addEventListener("click",function(){
+        if(locked)return; locked=true;
+        var isRight=(o===back);
+        btn.classList.add(isRight?"right":"wrong");
+        if(!isRight){
+          bodyEl.querySelectorAll(".opt").forEach(function(x){if(x.textContent===back)x.classList.add("right");});
+          wrongs.push(q);
+        }else correct++;
+        setTimeout(next,isRight?550:1200);
+      });
+      bodyEl.appendChild(btn);
+    });
+  }
+  else{ /* 철자 쓰기 */
+    $("qCard").onclick=null;
+    $("qSub").textContent=(qDir==="w2m")?"뜻을 입력하세요":"영어 철자를 입력하세요";
+    bodyEl.innerHTML='<input id="typeInput" autocomplete="off" autocapitalize="off"><div id="typeAnswer"></div>'+
+      '<button class="big-btn prime" id="typeSubmit" style="margin-top:12px;">확인</button>';
+    var inp=$("typeInput");
+    setTimeout(function(){inp.focus();},80);
+    function check(){
+      if(locked)return; locked=true;
+      var v=inp.value.trim().toLowerCase().replace(/\s+/g," ");
+      var ans=back.trim().toLowerCase().replace(/\s+/g," ");
+      /* 뜻 채점은 쉼표로 나뉜 뜻 중 하나만 맞아도 정답 */
+      var ok=(v===ans)||(qDir==="w2m"&&ans.split(/[,/·]/).map(function(s){return s.trim();}).indexOf(v)>=0);
+      inp.classList.add(ok?"right":"wrong");
+      $("typeAnswer").textContent=ok?"정답! 🎉":"정답: "+back;
+      $("typeAnswer").style.color=ok?"var(--ok)":"var(--bad)";
+      if(ok)correct++; else wrongs.push(q);
+      setTimeout(next,ok?600:1500);
+    }
+    $("typeSubmit").addEventListener("click",check);
+    inp.addEventListener("keydown",function(e){if(e.key==="Enter")check();});
+  }
+}
+function next(){qi++;renderQ();}
+function finish(){
+  var pct=quiz.length?Math.round(correct/quiz.length*100):0;
+  var b=getBook(setupId);
+  if(b&&(b.best==null||pct>b.best)){b.best=pct;saveAll(state);}
+  document.querySelector("#resultScore .pct").textContent=pct+"%";
+  document.querySelector("#resultScore .sub").textContent=quiz.length+"문제 중 "+correct+"개 정답";
+  var wl=$("wrongList"); wl.innerHTML="";
+  $("wrongLabel").style.display=wrongs.length?"block":"none";
+  $("retryWrongBtn").style.display=wrongs.length?"block":"none";
+  wrongs.forEach(function(q){
+    var el=document.createElement("div");el.className="wrong-item";
+    el.innerHTML="<b></b> <span></span>";
+    el.querySelector("b").textContent=q.w;
+    el.querySelector("span").textContent="— "+q.m;
+    wl.appendChild(el);
+  });
+  if(!wrongs.length){
+    wl.innerHTML='<div style="text-align:center;color:var(--ok);font-weight:800;padding:14px;">전부 맞았어요! 완벽 🏆</div>';
+  }
+  show("vResult");
+}
+$("retryWrongBtn").addEventListener("click",function(){
+  var w=wrongs.slice(); startQuiz(w);
+});
+$("toHomeBtn").addEventListener("click",function(){renderHome();show("vHome");});
+
+/* ── 백업/복원 ── */
+$("backupBtn").addEventListener("click",function(){
+  var blob=new Blob([JSON.stringify(state,null,1)],{type:"application/json"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  var d=new Date();a.download="단어시험_백업_"+d.getFullYear()+(d.getMonth()+1)+d.getDate()+".json";
+  a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+  toast("백업 파일 다운로드");
+});
+$("restoreBtn").addEventListener("click",function(){$("restoreFile").click();});
+$("restoreFile").addEventListener("change",function(){
+  var f=this.files[0];this.value="";if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var d=JSON.parse(r.result);
+      if(!d||!Array.isArray(d.books))throw 0;
+      if(!confirm("복원하면 현재 단어장을 백업 파일로 교체합니다. 진행할까요?"))return;
+      state=d;saveAll(state);renderHome();show("vHome");toast("복원 완료");
+    }catch(e){alert("올바른 백업 파일이 아니에요.");}
+  };
+  r.readAsText(f);
+});
+
+/* ── PWA ── */
+if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
+  window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});
+}
+
+renderHome();
+})();
+</script>
+</body>
+</html>
