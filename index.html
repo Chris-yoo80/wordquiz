@@ -302,24 +302,35 @@ $("saveBookBtn").addEventListener("click",function(){
 $("btnManual").addEventListener("click",function(){openEdit(null);});
 
 /* ── OCR로 만들기 ── */
-var TESS_URL="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.5/tesseract.min.js";
-var tessReady=null;
+/* OCR 엔진·언어 데이터는 앱에 포함 → 오프라인에서도 동작 */
+function abs(p){return new URL(p,location.href).href;}
+var TESS_URL=abs("lib/tesseract.min.js");
+var tessReady=null, ocrWorker=null;
 function loadTess(){
-  if(window.Tesseract)return Promise.resolve();
+  if(ocrWorker)return Promise.resolve(ocrWorker);
   if(tessReady)return tessReady;
   tessReady=new Promise(function(res,rej){
+    if(window.Tesseract)return res();
     var sc=document.createElement("script");sc.src=TESS_URL;
-    sc.onload=res;sc.onerror=function(){tessReady=null;rej(new Error("net"));};
+    sc.onload=res;sc.onerror=function(){rej(new Error("load"));};
     document.head.appendChild(sc);
-  });
+  }).then(function(){
+    return window.Tesseract.createWorker("kor+eng",1,{
+      workerPath:abs("lib/worker.min.js"),
+      corePath:abs("lib/core"),
+      langPath:abs("lib/lang"),
+      gzip:true
+    });
+  }).then(function(w){ocrWorker=w;return w;})
+    .catch(function(e){tessReady=null;throw e;});
   return tessReady;
 }
 $("btnOcr").addEventListener("click",function(){$("ocrFile").click();});
 $("ocrFile").addEventListener("change",function(){
   var f=this.files[0]; this.value=""; if(!f)return;
-  toast("사진에서 단어 인식 중… 처음엔 1분쯤 걸려요");
-  loadTess().then(function(){
-    return window.Tesseract.recognize(f,"kor+eng");
+  toast("사진에서 단어 인식 중… 잠시만요");
+  loadTess().then(function(w){
+    return w.recognize(f);
   }).then(function(out){
     var text=(out&&out.data&&out.data.text)||"";
     var pairs=parseWordPairs(text);
@@ -330,8 +341,7 @@ $("ocrFile").addEventListener("change",function(){
     }
     openEdit(null,"사진에서 "+pairs.length+"개를 읽었어요. 잘못 읽힌 것만 고치고 저장하세요!",pairs);
   }).catch(function(err){
-    if(err&&err.message==="net")alert("인식 도구를 내려받지 못했어요. 인터넷 연결 후 다시 시도해주세요.");
-    else alert("사진 인식에 실패했어요.");
+    alert("사진 인식에 실패했어요. 다시 시도하거나 직접 입력해주세요.");
   });
 });
 /* 줄 단위로 "영어부분 + 한글부분" 분리 */
